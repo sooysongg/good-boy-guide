@@ -6,6 +6,7 @@ import ReviewForm from '@/components/reviews/ReviewForm'
 import ReportButton from '@/components/places/ReportButton'
 import AdminDeletePlaceButton from '@/components/places/AdminDeletePlaceButton'
 import AdminEditCategories from '@/components/places/AdminEditCategories'
+import AdminEditAmenities from '@/components/places/AdminEditAmenities'
 import { NoiseLevel, PlaceCategory } from '@/lib/types'
 import { ADMIN_USER_ID } from '@/lib/admin'
 
@@ -118,7 +119,22 @@ export default async function PlaceDetailPage({ params }: Props) {
       {/* Amenities */}
       {amenities && (
         <div>
-          <h2 className="font-semibold mb-3">Dog amenities</h2>
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="font-semibold">Dog amenities</h2>
+            {isAdmin && (
+              <AdminEditAmenities
+                placeId={place.id}
+                current={{
+                  dogs_allowed_indoors: amenities.dogs_allowed_indoors,
+                  water_bowl:           amenities.water_bowl,
+                  treats:               amenities.treats,
+                  outdoor_seating:      amenities.outdoor_seating,
+                  space_to_lie_down:    amenities.space_to_lie_down,
+                  noise_level:          amenities.noise_level as NoiseLevel,
+                }}
+              />
+            )}
+          </div>
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-sm">
             <Amenity label="Dogs allowed indoors" value={amenities.dogs_allowed_indoors} />
             <Amenity label="Water bowl"            value={amenities.water_bowl} />

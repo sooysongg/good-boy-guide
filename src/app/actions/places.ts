@@ -57,6 +57,31 @@ export async function createPlace(formData: FormData) {
   redirect(`/places/${place.id}`)
 }
 
+export async function updatePlaceAmenitiesAsAdmin(
+  placeId: string,
+  data: {
+    dogs_allowed_indoors: boolean
+    water_bowl: boolean
+    treats: boolean
+    outdoor_seating: boolean
+    space_to_lie_down: boolean
+    noise_level: NoiseLevel
+  }
+) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user || user.id !== ADMIN_USER_ID) return { error: 'Unauthorized.' }
+
+  const { error } = await supabase
+    .from('place_amenities')
+    .update(data)
+    .eq('place_id', placeId)
+
+  if (error) return { error: error.message }
+  revalidatePath(`/places/${placeId}`)
+  return { success: true }
+}
+
 export async function updatePlaceCategoriesAsAdmin(placeId: string, categories: PlaceCategory[]) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
