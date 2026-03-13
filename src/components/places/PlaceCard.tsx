@@ -23,14 +23,18 @@ export default function PlaceCard({ place }: Props) {
         <div className="flex items-start justify-between gap-2">
           <div>
             <div className="flex items-center gap-2">
-              <span className="text-lg">{CATEGORY_EMOJI[place.category]}</span>
+              <span className="text-lg">{CATEGORY_EMOJI[place.categories?.[0] ?? place.category]}</span>
               <h2 className="font-semibold text-stone-900">{place.name}</h2>
             </div>
             <p className="text-sm text-stone-500 mt-0.5">{place.address}</p>
           </div>
-          <span className="text-xs text-stone-400 capitalize shrink-0 bg-stone-100 px-2 py-1 rounded-full">
-            {place.category}
-          </span>
+          <div className="flex flex-wrap justify-end gap-1 shrink-0">
+            {(place.categories?.length ? place.categories : [place.category]).map((cat) => (
+              <span key={cat} className="text-xs text-stone-400 capitalize bg-stone-100 px-2 py-1 rounded-full">
+                {cat}
+              </span>
+            ))}
+          </div>
         </div>
 
         <div className="flex items-center gap-4 mt-3 text-sm text-stone-500">

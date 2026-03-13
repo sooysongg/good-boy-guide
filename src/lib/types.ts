@@ -13,7 +13,8 @@ export interface Place {
   address: string
   lat: number
   lng: number
-  category: PlaceCategory
+  category: PlaceCategory        // primary (kept for backward compat)
+  categories: PlaceCategory[]    // all categories
   created_by: string
   created_at: string
 }

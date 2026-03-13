@@ -1,5 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
-import { PlaceCategory } from '@/lib/types'
+
 import PlaceCard from '@/components/places/PlaceCard'
 import CategoryFilter from '@/components/places/CategoryFilter'
 import ViewToggle from '@/components/places/ViewToggle'
@@ -43,9 +43,9 @@ export default async function PlacesPage({ searchParams }: Props) {
     .from('places')
     .select('*, reviews(dog_rating)', { count: 'exact' })
 
-  // Category filter
+  // Category filter — use contains() so multi-category places show up
   if (category && ['café', 'restaurant', 'bakery', 'bar'].includes(category)) {
-    query = query.eq('category', category as PlaceCategory)
+    query = query.contains('categories', [category])
   }
 
   // Search filter

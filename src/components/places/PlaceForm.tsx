@@ -45,7 +45,7 @@ export default function PlaceForm() {
   const [name,     setName]     = useState('')
   const [address,  setAddress]  = useState('')
   const [coords,   setCoords]   = useState<{ lat: number; lng: number } | null>(null)
-  const [category, setCategory] = useState<PlaceCategory | ''>('')
+  const [categories, setCategories] = useState<PlaceCategory[]>([])
   const [placeFound, setPlaceFound] = useState(false)
 
   // Load Google Maps JS + init Autocomplete
@@ -77,7 +77,8 @@ export default function PlaceForm() {
           lat: place.geometry.location.lat(),
           lng: place.geometry.location.lng(),
         })
-        setCategory(guessCategory(place.types ?? []))
+        const guessed = guessCategory(place.types ?? [])
+        setCategories(guessed ? [guessed] : [])
         setPlaceFound(true)
       })
     })
@@ -138,24 +139,46 @@ export default function PlaceForm() {
         </div>
       )}
 
-      {/* Category */}
-      <div className="space-y-1.5">
-        <label htmlFor="category" className="block text-sm font-medium text-stone-700">
+      {/* Categories */}
+      <div className="space-y-2">
+        <p className="text-sm font-medium text-stone-700">
           Category <span className="text-red-500">*</span>
-        </label>
-        <select
-          id="category"
-          name="category"
-          required
-          value={category}
-          onChange={(e) => setCategory(e.target.value as PlaceCategory)}
-          className="w-full border border-stone-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-stone-400 bg-white"
-        >
-          <option value="" disabled>Select a category</option>
-          {CATEGORIES.map(({ value, label }) => (
-            <option key={value} value={value}>{label}</option>
-          ))}
-        </select>
+          <span className="text-stone-400 font-normal ml-1">(select all that apply)</span>
+        </p>
+        <div className="flex flex-wrap gap-2">
+          {CATEGORIES.map(({ value, label }) => {
+            const checked = categories.includes(value)
+            return (
+              <label
+                key={value}
+                className={`flex items-center gap-2 px-3 py-1.5 rounded-full border text-sm cursor-pointer transition-colors ${
+                  checked
+                    ? 'bg-stone-900 text-white border-stone-900'
+                    : 'border-stone-200 text-stone-700 hover:border-stone-400'
+                }`}
+              >
+                <input
+                  type="checkbox"
+                  name="categories"
+                  value={value}
+                  checked={checked}
+                  onChange={(e) =>
+                    setCategories(
+                      e.target.checked
+                        ? [...categories, value]
+                        : categories.filter((c) => c !== value)
+                    )
+                  }
+                  className="sr-only"
+                />
+                {label}
+              </label>
+            )
+          })}
+        </div>
+        {categories.length === 0 && placeFound && (
+          <p className="text-xs text-red-500">Please select at least one category.</p>
+        )}
       </div>
 
       {/* Dog amenities */}
@@ -194,7 +217,7 @@ export default function PlaceForm() {
 
       <button
         type="submit"
-        disabled={isPending || !placeFound}
+        disabled={isPending || !placeFound || categories.length === 0}
         className="w-full bg-stone-900 text-white py-2.5 rounded-lg text-sm font-medium hover:bg-stone-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
       >
         {isPending ? 'Adding place…' : 'Add place'}

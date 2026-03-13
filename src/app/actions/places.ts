@@ -12,19 +12,21 @@ export async function createPlace(formData: FormData) {
     return { error: 'You must be signed in to add a place.' }
   }
 
-  const name     = formData.get('name') as string
-  const address  = formData.get('address') as string
-  const category = formData.get('category') as PlaceCategory
-  const lat      = parseFloat(formData.get('lat') as string)
-  const lng      = parseFloat(formData.get('lng') as string)
+  const name       = formData.get('name') as string
+  const address    = formData.get('address') as string
+  const categories = formData.getAll('categories') as PlaceCategory[]
+  const lat        = parseFloat(formData.get('lat') as string)
+  const lng        = parseFloat(formData.get('lng') as string)
 
-  if (!name || !address || !category || isNaN(lat) || isNaN(lng)) {
-    return { error: 'Please fill in all required fields and verify the address.' }
+  if (!name || !address || categories.length === 0 || isNaN(lat) || isNaN(lng)) {
+    return { error: 'Please fill in all required fields and select at least one category.' }
   }
+
+  const category = categories[0] // primary category
 
   const { data: place, error: placeError } = await supabase
     .from('places')
-    .insert({ name, address, lat, lng, category, created_by: user.id })
+    .insert({ name, address, lat, lng, category, categories, created_by: user.id })
     .select('id')
     .single()
 
