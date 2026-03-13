@@ -4,6 +4,7 @@ import PlaceCard from '@/components/places/PlaceCard'
 import CategoryFilter from '@/components/places/CategoryFilter'
 import ViewToggle from '@/components/places/ViewToggle'
 import SearchBar from '@/components/places/SearchBar'
+import SortSelect from '@/components/places/SortSelect'
 import Pagination from '@/components/places/Pagination'
 import Link from 'next/link'
 import { Suspense } from 'react'
@@ -18,30 +19,49 @@ const PlaceMap = dynamic(() => import('@/components/map/PlaceMap'), {
 
 const PAGE_SIZE = 12
 
+type SortOption = 'newest' | 'az' | 'rating' | 'popular'
+
 interface Props {
-  searchParams: Promise<{ category?: string; view?: string; search?: string; page?: string }>
+  searchParams: Promise<{
+    category?: string
+    view?: string
+    search?: string
+    page?: string
+    sort?: string
+  }>
 }
 
 export default async function PlacesPage({ searchParams }: Props) {
-  const { category, view, search, page: pageParam } = await searchParams
-  const supabase = await createClient()
+  const { category, view, search, page: pageParam, sort } = await searchParams
+  const supabase    = await createClient()
   const currentPage = Math.max(1, parseInt(pageParam ?? '1'))
-  const isMap = view === 'map'
+  const isMap       = view === 'map'
+  const sortBy      = (sort ?? 'newest') as SortOption
 
+  // Base query — always fetch reviews so we can compute stats
   let query = supabase
     .from('places')
     .select('*, reviews(dog_rating)', { count: 'exact' })
-    .order('created_at', { ascending: false })
 
+  // Category filter
   if (category && ['café', 'restaurant', 'bakery', 'bar'].includes(category)) {
     query = query.eq('category', category as PlaceCategory)
   }
 
+  // Search filter
   if (search?.trim()) {
     query = query.ilike('name', `%${search.trim()}%`)
   }
 
-  // Map view loads all places (no pagination needed for pins)
+  // Sorting — rating/popular need client-side sort after stats are computed
+  if (sortBy === 'az') {
+    query = query.order('name', { ascending: true })
+  } else {
+    // newest is default; rating + popular sorted client-side after stats
+    query = query.order('created_at', { ascending: false })
+  }
+
+  // Pagination (skip for map — it needs all pins)
   if (!isMap) {
     const from = (currentPage - 1) * PAGE_SIZE
     query = query.range(from, from + PAGE_SIZE - 1)
@@ -53,17 +73,30 @@ export default async function PlacesPage({ searchParams }: Props) {
     return <p className="text-red-500">Failed to load places: {error.message}</p>
   }
 
-  const totalPages = isMap ? 1 : Math.ceil((count ?? 0) / PAGE_SIZE)
-
-  const placesWithStats = (places ?? []).map((place) => {
+  // Compute per-place stats
+  let placesWithStats = (places ?? []).map((place) => {
     const reviews: { dog_rating: number }[] = place.reviews ?? []
-    const review_count = reviews.length
+    const review_count  = reviews.length
     const avg_dog_rating =
       review_count > 0
         ? reviews.reduce((sum, r) => sum + r.dog_rating, 0) / review_count
         : null
     return { ...place, review_count, avg_dog_rating }
   })
+
+  // Client-side sorts (DB can't easily sort by computed avg)
+  if (sortBy === 'rating') {
+    placesWithStats = [...placesWithStats].sort((a, b) => {
+      if (a.avg_dog_rating === null && b.avg_dog_rating === null) return 0
+      if (a.avg_dog_rating === null) return 1
+      if (b.avg_dog_rating === null) return -1
+      return b.avg_dog_rating - a.avg_dog_rating
+    })
+  } else if (sortBy === 'popular') {
+    placesWithStats = [...placesWithStats].sort((a, b) => b.review_count - a.review_count)
+  }
+
+  const totalPages = isMap ? 1 : Math.ceil((count ?? 0) / PAGE_SIZE)
 
   return (
     <div className="space-y-5">
@@ -82,14 +115,19 @@ export default async function PlacesPage({ searchParams }: Props) {
         <SearchBar />
       </Suspense>
 
-      {/* Filters + view toggle */}
+      {/* Filters + sort + view toggle */}
       <div className="flex items-center gap-3 flex-wrap">
         <Suspense>
           <CategoryFilter />
         </Suspense>
-        <Suspense>
-          <ViewToggle />
-        </Suspense>
+        <div className="flex items-center gap-3 ml-auto">
+          <Suspense>
+            <SortSelect />
+          </Suspense>
+          <Suspense>
+            <ViewToggle />
+          </Suspense>
+        </div>
       </div>
 
       {/* Results count */}

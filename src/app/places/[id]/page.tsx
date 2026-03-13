@@ -60,7 +60,17 @@ export default async function PlaceDetailPage({ params }: Props) {
               <span className="text-2xl">{CATEGORY_EMOJI[place.category as PlaceCategory]}</span>
               <h1 className="text-2xl font-bold">{place.name}</h1>
             </div>
-            <p className="text-stone-500 mt-0.5">{place.address}</p>
+            <div className="flex items-center gap-3 mt-0.5 flex-wrap">
+              <p className="text-stone-500">{place.address}</p>
+              <a
+                href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(place.name)}&query=${place.lat},${place.lng}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-xs text-stone-400 hover:text-stone-600 transition-colors flex items-center gap-1 shrink-0"
+              >
+                📍 Google Maps
+              </a>
+            </div>
           </div>
           <span className="text-xs capitalize bg-stone-100 text-stone-500 px-2.5 py-1 rounded-full shrink-0">
             {place.category}
