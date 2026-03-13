@@ -14,6 +14,8 @@ export async function createReview(formData: FormData) {
   const human_text   = (formData.get('human_text') as string).trim()
   const dog_rating   = parseInt(formData.get('dog_rating') as string)
   const dog_text     = (formData.get('dog_text') as string).trim()
+  const dog_name     = ((formData.get('dog_name') as string) ?? '').trim() || null
+  const dog_breed    = ((formData.get('dog_breed') as string) ?? '').trim() || null
 
   if (!human_text || !dog_text) return { error: 'Please fill in both review fields.' }
   if (isNaN(human_rating) || isNaN(dog_rating)) return { error: 'Please select both ratings.' }
@@ -25,6 +27,8 @@ export async function createReview(formData: FormData) {
     human_text,
     dog_rating,
     dog_text,
+    dog_name,
+    dog_breed,
   })
 
   if (error) {

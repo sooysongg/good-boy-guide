@@ -2,23 +2,29 @@ import { createClient } from '@/lib/supabase/server'
 import { PlaceCategory } from '@/lib/types'
 import PlaceCard from '@/components/places/PlaceCard'
 import CategoryFilter from '@/components/places/CategoryFilter'
+import ViewToggle from '@/components/places/ViewToggle'
 import Link from 'next/link'
 import { Suspense } from 'react'
+import dynamic from 'next/dynamic'
+
+const PlaceMap = dynamic(() => import('@/components/map/PlaceMap'), {
+  ssr: false,
+  loading: () => (
+    <div className="h-[580px] w-full rounded-xl bg-stone-100 animate-pulse border border-stone-200" />
+  ),
+})
 
 interface Props {
-  searchParams: Promise<{ category?: string }>
+  searchParams: Promise<{ category?: string; view?: string }>
 }
 
 export default async function PlacesPage({ searchParams }: Props) {
-  const { category } = await searchParams
+  const { category, view } = await searchParams
   const supabase = await createClient()
 
   let query = supabase
     .from('places')
-    .select(`
-      *,
-      reviews(dog_rating)
-    `)
+    .select(`*, reviews(dog_rating)`)
     .order('created_at', { ascending: false })
 
   if (category && ['café', 'restaurant', 'bakery', 'bar'].includes(category)) {
@@ -41,8 +47,10 @@ export default async function PlacesPage({ searchParams }: Props) {
     return { ...place, review_count, avg_dog_rating }
   })
 
+  const isMap = view === 'map'
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">Dog-friendly places in Oslo</h1>
         <Link
@@ -53,9 +61,14 @@ export default async function PlacesPage({ searchParams }: Props) {
         </Link>
       </div>
 
-      <Suspense>
-        <CategoryFilter />
-      </Suspense>
+      <div className="flex items-center gap-3 flex-wrap">
+        <Suspense>
+          <CategoryFilter />
+        </Suspense>
+        <Suspense>
+          <ViewToggle />
+        </Suspense>
+      </div>
 
       {placesWithStats.length === 0 ? (
         <div className="text-center py-16 text-stone-400">
@@ -63,6 +76,8 @@ export default async function PlacesPage({ searchParams }: Props) {
           <p className="font-medium">No places found</p>
           <p className="text-sm mt-1">Be the first to add one!</p>
         </div>
+      ) : isMap ? (
+        <PlaceMap places={placesWithStats} />
       ) : (
         <div className="grid gap-3 sm:grid-cols-2">
           {placesWithStats.map((place) => (

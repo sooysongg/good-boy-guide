@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import ReviewCard from '@/components/reviews/ReviewCard'
 import ReviewForm from '@/components/reviews/ReviewForm'
+import ReportButton from '@/components/places/ReportButton'
 import { NoiseLevel, PlaceCategory } from '@/lib/types'
 
 const CATEGORY_EMOJI: Record<PlaceCategory, string> = {
@@ -136,6 +137,10 @@ export default async function PlaceDetailPage({ params }: Props) {
         ) : (
           <ReviewForm placeId={place.id} />
         )}
+      </div>
+      {/* Report */}
+      <div className="pt-4 border-t border-stone-100 flex justify-center">
+        <ReportButton placeId={place.id} />
       </div>
     </div>
   )

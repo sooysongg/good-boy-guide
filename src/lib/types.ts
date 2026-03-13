@@ -37,6 +37,16 @@ export interface Review {
   human_text: string
   dog_rating: number
   dog_text: string
+  dog_name: string | null
+  dog_breed: string | null
+  created_at: string
+}
+
+export interface PlaceReport {
+  id: string
+  place_id: string
+  user_id: string | null
+  reason: string
   created_at: string
 }
 
