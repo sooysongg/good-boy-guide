@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
+import { ADMIN_USER_ID } from '@/lib/admin'
 
 import PlaceCard from '@/components/places/PlaceCard'
 import CategoryFilter from '@/components/places/CategoryFilter'
@@ -34,6 +35,8 @@ interface Props {
 export default async function PlacesPage({ searchParams }: Props) {
   const { category, view, search, page: pageParam, sort } = await searchParams
   const supabase    = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  const isAdmin = user?.id === ADMIN_USER_ID
   const currentPage = Math.max(1, parseInt(pageParam ?? '1'))
   const isMap       = view === 'map'
   const sortBy      = (sort ?? 'newest') as SortOption
@@ -151,7 +154,7 @@ export default async function PlacesPage({ searchParams }: Props) {
         <>
           <div className="grid gap-3 sm:grid-cols-2">
             {placesWithStats.map((place) => (
-              <PlaceCard key={place.id} place={place} />
+              <PlaceCard key={place.id} place={place} isAdmin={isAdmin} />
             ))}
           </div>
           <Suspense>

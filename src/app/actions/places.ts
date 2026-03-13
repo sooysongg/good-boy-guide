@@ -2,7 +2,9 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
+import { revalidatePath } from 'next/cache'
 import { PlaceCategory, NoiseLevel } from '@/lib/types'
+import { ADMIN_USER_ID } from '@/lib/admin'
 
 export async function createPlace(formData: FormData) {
   const supabase = await createClient()
@@ -53,4 +55,17 @@ export async function createPlace(formData: FormData) {
   }
 
   redirect(`/places/${place.id}`)
+}
+
+export async function deletePlaceAsAdmin(placeId: string) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user || user.id !== ADMIN_USER_ID) return { error: 'Unauthorized.' }
+
+  // Reviews, amenities, and reports cascade-delete automatically
+  const { error } = await supabase.from('places').delete().eq('id', placeId)
+  if (error) return { error: error.message }
+
+  revalidatePath('/places')
+  redirect('/places')
 }

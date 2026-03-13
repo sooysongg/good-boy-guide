@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useTransition } from 'react'
-import { updateReview, deleteReview } from '@/app/actions/reviews'
+import { updateReview, deleteReview, deleteReviewAsAdmin } from '@/app/actions/reviews'
 import StarPicker from './StarPicker'
 
 interface Review {
@@ -21,6 +21,7 @@ interface Review {
 interface Props {
   review: Review
   currentUserId: string | null
+  isAdmin: boolean
 }
 
 function Stars({ rating }: { rating: number }) {
@@ -32,7 +33,7 @@ function Stars({ rating }: { rating: number }) {
   )
 }
 
-export default function ReviewItem({ review, currentUserId }: Props) {
+export default function ReviewItem({ review, currentUserId, isAdmin }: Props) {
   const [editing, setEditing]   = useState(false)
   const [error, setError]       = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
@@ -51,6 +52,14 @@ export default function ReviewItem({ review, currentUserId }: Props) {
     if (!confirm('Delete this review? This cannot be undone.')) return
     startTransition(async () => {
       const result = await deleteReview(review.id, review.place_id)
+      if (result?.error) setError(result.error)
+    })
+  }
+
+  function handleAdminDelete() {
+    if (!confirm(`Delete review by ${review.users?.username ?? 'this user'}? This cannot be undone.`)) return
+    startTransition(async () => {
+      const result = await deleteReviewAsAdmin(review.id, review.place_id)
       if (result?.error) setError(result.error)
     })
   }
@@ -93,6 +102,16 @@ export default function ReviewItem({ review, currentUserId }: Props) {
                 Delete
               </button>
             </div>
+          )}
+          {isAdmin && !isOwner && !editing && (
+            <button
+              onClick={handleAdminDelete}
+              disabled={isPending}
+              title="Admin: delete review"
+              className="text-xs text-red-300 hover:text-red-500 transition-colors disabled:opacity-50"
+            >
+              🗑
+            </button>
           )}
         </div>
       </div>

@@ -1,7 +1,9 @@
 'use client'
 
 import Link from 'next/link'
+import { useTransition } from 'react'
 import { Place } from '@/lib/types'
+import { deletePlaceAsAdmin } from '@/app/actions/places'
 
 const CATEGORY_EMOJI: Record<string, string> = {
   café: '☕',
@@ -12,15 +14,38 @@ const CATEGORY_EMOJI: Record<string, string> = {
 
 interface Props {
   place: Place & { review_count: number; avg_dog_rating: number | null }
+  isAdmin?: boolean
 }
 
 function googleMapsUrl(lat: number, lng: number, name: string) {
   return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(name)}&query=${lat},${lng}`
 }
 
-export default function PlaceCard({ place }: Props) {
+export default function PlaceCard({ place, isAdmin }: Props) {
+  const [isPending, startTransition] = useTransition()
+
+  function handleAdminDelete(e: React.MouseEvent) {
+    e.preventDefault()
+    e.stopPropagation()
+    if (!confirm(`Delete "${place.name}"? This will also remove all its reviews. This cannot be undone.`)) return
+    startTransition(async () => {
+      await deletePlaceAsAdmin(place.id)
+    })
+  }
+
   return (
-    <div className="bg-white border border-stone-200 rounded-xl p-4 hover:border-stone-400 hover:shadow-sm transition-all">
+    <div className={`bg-white border border-stone-200 rounded-xl p-4 hover:border-stone-400 hover:shadow-sm transition-all relative ${isPending ? 'opacity-50' : ''}`}>
+      {isAdmin && (
+        <button
+          onClick={handleAdminDelete}
+          disabled={isPending}
+          title="Admin: delete place"
+          className="absolute top-3 right-3 text-red-300 hover:text-red-500 transition-colors text-sm disabled:opacity-50 z-10"
+        >
+          🗑
+        </button>
+      )}
+
       <Link href={`/places/${place.id}`} className="block">
         <div className="flex items-start justify-between gap-2">
           <div>
@@ -30,7 +55,7 @@ export default function PlaceCard({ place }: Props) {
             </div>
             <p className="text-sm text-stone-500 mt-0.5">{place.address}</p>
           </div>
-          <div className="flex flex-wrap justify-end gap-1 shrink-0">
+          <div className={`flex flex-wrap justify-end gap-1 shrink-0 ${isAdmin ? 'pr-6' : ''}`}>
             {(place.categories?.length ? place.categories : [place.category]).map((cat) => (
               <span key={cat} className="text-xs text-stone-400 capitalize bg-stone-100 px-2 py-1 rounded-full">
                 {cat}

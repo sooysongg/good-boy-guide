@@ -2,6 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
+import { ADMIN_USER_ID } from '@/lib/admin'
 
 function parseReviewFields(formData: FormData) {
   return {
@@ -75,6 +76,19 @@ export async function deleteReview(id: string, placeId: string) {
     .eq('id', id)
     .eq('user_id', user.id)   // RLS + explicit check
 
+  if (error) return { error: error.message }
+
+  revalidatePath(`/places/${placeId}`)
+  return { success: true }
+}
+
+export async function deleteReviewAsAdmin(id: string, placeId: string) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user || user.id !== ADMIN_USER_ID) return { error: 'Unauthorized.' }
+
+  // No user_id check — admin RLS policy allows this
+  const { error } = await supabase.from('reviews').delete().eq('id', id)
   if (error) return { error: error.message }
 
   revalidatePath(`/places/${placeId}`)

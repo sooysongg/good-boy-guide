@@ -4,7 +4,9 @@ import Link from 'next/link'
 import ReviewItem from '@/components/reviews/ReviewItem'
 import ReviewForm from '@/components/reviews/ReviewForm'
 import ReportButton from '@/components/places/ReportButton'
+import AdminDeletePlaceButton from '@/components/places/AdminDeletePlaceButton'
 import { NoiseLevel, PlaceCategory } from '@/lib/types'
+import { ADMIN_USER_ID } from '@/lib/admin'
 
 const CATEGORY_EMOJI: Record<PlaceCategory, string> = {
   café: '☕', restaurant: '🍽️', bakery: '🥐', bar: '🍺',
@@ -44,6 +46,8 @@ export default async function PlaceDetailPage({ params }: Props) {
   const alreadyReviewed = user
     ? reviews.some((r: { user_id: string }) => r.user_id === user.id)
     : false
+
+  const isAdmin = user?.id === ADMIN_USER_ID
 
   const amenities = place.place_amenities
 
@@ -126,7 +130,7 @@ export default async function PlaceDetailPage({ params }: Props) {
         ) : (
           <div className="space-y-3">
             {reviews.map((review: Parameters<typeof ReviewItem>[0]['review']) => (
-              <ReviewItem key={review.id} review={review} currentUserId={user?.id ?? null} />
+              <ReviewItem key={review.id} review={review} currentUserId={user?.id ?? null} isAdmin={isAdmin} />
             ))}
           </div>
         )}
@@ -148,9 +152,12 @@ export default async function PlaceDetailPage({ params }: Props) {
           <ReviewForm placeId={place.id} />
         )}
       </div>
-      {/* Report */}
-      <div className="pt-4 border-t border-stone-100 flex justify-center">
+      {/* Report + Admin delete */}
+      <div className="pt-4 border-t border-stone-100 flex items-center justify-between">
         <ReportButton placeId={place.id} />
+        {isAdmin && (
+          <AdminDeletePlaceButton placeId={place.id} placeName={place.name} />
+        )}
       </div>
     </div>
   )
