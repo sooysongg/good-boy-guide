@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState, useTransition } from 'react'
-import { Loader } from '@googlemaps/js-api-loader'
+import { setOptions, importLibrary } from '@googlemaps/js-api-loader'
 import { createPlace } from '@/app/actions/places'
 import { PlaceCategory, NoiseLevel } from '@/lib/types'
 
@@ -50,17 +50,18 @@ export default function PlaceForm() {
 
   // Load Google Maps JS + init Autocomplete
   useEffect(() => {
-    const loader = new Loader({
-      apiKey:    process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY!,
-      version:   'weekly',
-      libraries: ['places'],
+    const input = autocompleteInputRef.current
+    if (!input) return
+
+    setOptions({
+      key: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY!,
+      v:   'weekly',
     })
 
-    loader.load().then((google) => {
-      const input = autocompleteInputRef.current
-      if (!input) return
+    importLibrary('places').then((lib) => {
+      const { Autocomplete } = lib as google.maps.PlacesLibrary
 
-      const autocomplete = new google.maps.places.Autocomplete(input, {
+      const autocomplete = new Autocomplete(input, {
         types:                ['establishment'],
         componentRestrictions: { country: 'no' },
         fields:               ['name', 'formatted_address', 'geometry', 'types'],
