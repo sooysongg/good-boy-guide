@@ -1,6 +1,7 @@
 'use client'
 
-import { useRef, useState, useTransition } from 'react'
+import { useEffect, useRef, useState, useTransition } from 'react'
+import { Loader } from '@googlemaps/js-api-loader'
 import { createPlace } from '@/app/actions/places'
 import { PlaceCategory, NoiseLevel } from '@/lib/types'
 
@@ -26,46 +27,75 @@ const AMENITIES = [
   { name: 'space_to_lie_down',    label: 'Space to lie down' },
 ]
 
+// Rough mapping from Google place types → our categories
+function guessCategory(types: string[]): PlaceCategory | '' {
+  if (types.includes('bakery'))      return 'bakery'
+  if (types.includes('bar') || types.includes('night_club')) return 'bar'
+  if (types.includes('cafe'))        return 'café'
+  if (types.includes('restaurant'))  return 'restaurant'
+  return ''
+}
+
 export default function PlaceForm() {
-  const formRef = useRef<HTMLFormElement>(null)
-  const [error, setError] = useState<string | null>(null)
-  const [geocodeStatus, setGeocodeStatus] = useState<'idle' | 'loading' | 'found' | 'not_found'>('idle')
-  const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(null)
+  const autocompleteInputRef = useRef<HTMLInputElement>(null)
+  const [error, setError]       = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
 
-  async function geocodeAddress(address: string) {
-    if (!address.trim()) return
-    setGeocodeStatus('loading')
-    setCoords(null)
-    try {
-      const res = await fetch(
-        `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(address + ', Oslo, Norway')}&format=json&limit=1`,
-        { headers: { 'Accept-Language': 'en' } }
-      )
-      const data = await res.json()
-      if (data.length > 0) {
-        setCoords({ lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) })
-        setGeocodeStatus('found')
-      } else {
-        setGeocodeStatus('not_found')
-      }
-    } catch {
-      setGeocodeStatus('not_found')
-    }
-  }
+  // Fields filled by Google Places
+  const [name,     setName]     = useState('')
+  const [address,  setAddress]  = useState('')
+  const [coords,   setCoords]   = useState<{ lat: number; lng: number } | null>(null)
+  const [category, setCategory] = useState<PlaceCategory | ''>('')
+  const [placeFound, setPlaceFound] = useState(false)
+
+  // Load Google Maps JS + init Autocomplete
+  useEffect(() => {
+    const loader = new Loader({
+      apiKey:    process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY!,
+      version:   'weekly',
+      libraries: ['places'],
+    })
+
+    loader.load().then((google) => {
+      const input = autocompleteInputRef.current
+      if (!input) return
+
+      const autocomplete = new google.maps.places.Autocomplete(input, {
+        types:                ['establishment'],
+        componentRestrictions: { country: 'no' },
+        fields:               ['name', 'formatted_address', 'geometry', 'types'],
+      })
+
+      autocomplete.addListener('place_changed', () => {
+        const place = autocomplete.getPlace()
+        if (!place.geometry?.location) return
+
+        setName(place.name ?? '')
+        setAddress(place.formatted_address ?? '')
+        setCoords({
+          lat: place.geometry.location.lat(),
+          lng: place.geometry.location.lng(),
+        })
+        setCategory(guessCategory(place.types ?? []))
+        setPlaceFound(true)
+      })
+    })
+  }, [])
 
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
     setError(null)
 
     if (!coords) {
-      setError('Please verify the address first — click outside the address field.')
+      setError('Please search for and select a place from the dropdown first.')
       return
     }
 
     const formData = new FormData(e.currentTarget)
-    formData.set('lat', String(coords.lat))
-    formData.set('lng', String(coords.lng))
+    formData.set('name',    name)
+    formData.set('address', address)
+    formData.set('lat',     String(coords.lat))
+    formData.set('lng',     String(coords.lng))
 
     startTransition(async () => {
       const result = await createPlace(formData)
@@ -74,58 +104,38 @@ export default function PlaceForm() {
   }
 
   return (
-    <form ref={formRef} onSubmit={handleSubmit} className="space-y-6">
+    <form onSubmit={handleSubmit} className="space-y-6">
       {error && (
         <div className="bg-red-50 border border-red-200 text-red-700 text-sm px-4 py-3 rounded-lg">
           {error}
         </div>
       )}
 
-      {/* Name */}
+      {/* Google Places search */}
       <div className="space-y-1.5">
-        <label htmlFor="name" className="block text-sm font-medium text-stone-700">
-          Place name <span className="text-red-500">*</span>
+        <label htmlFor="place-search" className="block text-sm font-medium text-stone-700">
+          Search for a place <span className="text-red-500">*</span>
         </label>
         <input
-          id="name"
-          name="name"
+          id="place-search"
+          ref={autocompleteInputRef}
           type="text"
-          required
           placeholder="e.g. Tim Wendelboe"
           className="w-full border border-stone-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-stone-400"
         />
+        <p className="text-xs text-stone-400">Start typing and select from the dropdown — address and location fill in automatically.</p>
       </div>
 
-      {/* Address */}
-      <div className="space-y-1.5">
-        <label htmlFor="address" className="block text-sm font-medium text-stone-700">
-          Address <span className="text-red-500">*</span>
-        </label>
-        <div className="relative">
-          <input
-            id="address"
-            name="address"
-            type="text"
-            required
-            placeholder="e.g. Grüners gate 1"
-            onBlur={(e) => geocodeAddress(e.target.value)}
-            className="w-full border border-stone-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-stone-400"
-          />
+      {/* Confirmed place details */}
+      {placeFound && (
+        <div className="bg-stone-50 border border-stone-200 rounded-lg px-4 py-3 space-y-0.5 text-sm">
+          <p className="font-medium text-stone-800">{name}</p>
+          <p className="text-stone-500 text-xs">{address}</p>
+          <p className="text-green-600 text-xs mt-1">
+            ✓ Location confirmed — {coords?.lat.toFixed(5)}, {coords?.lng.toFixed(5)}
+          </p>
         </div>
-        {geocodeStatus === 'loading' && (
-          <p className="text-xs text-stone-400">Looking up address…</p>
-        )}
-        {geocodeStatus === 'found' && coords && (
-          <p className="text-xs text-green-600">
-            ✓ Found — {coords.lat.toFixed(5)}, {coords.lng.toFixed(5)}
-          </p>
-        )}
-        {geocodeStatus === 'not_found' && (
-          <p className="text-xs text-red-500">
-            Address not found. Try adding the street number or neighbourhood.
-          </p>
-        )}
-      </div>
+      )}
 
       {/* Category */}
       <div className="space-y-1.5">
@@ -136,7 +146,8 @@ export default function PlaceForm() {
           id="category"
           name="category"
           required
-          defaultValue=""
+          value={category}
+          onChange={(e) => setCategory(e.target.value as PlaceCategory)}
           className="w-full border border-stone-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-stone-400 bg-white"
         >
           <option value="" disabled>Select a category</option>
@@ -150,11 +161,11 @@ export default function PlaceForm() {
       <div className="space-y-3">
         <p className="text-sm font-medium text-stone-700">Dog amenities</p>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-          {AMENITIES.map(({ name, label }) => (
-            <label key={name} className="flex items-center gap-2.5 text-sm text-stone-700 cursor-pointer">
+          {AMENITIES.map(({ name: amenityName, label }) => (
+            <label key={amenityName} className="flex items-center gap-2.5 text-sm text-stone-700 cursor-pointer">
               <input
                 type="checkbox"
-                name={name}
+                name={amenityName}
                 className="w-4 h-4 rounded border-stone-300 text-stone-900 focus:ring-stone-400"
               />
               {label}
@@ -182,7 +193,7 @@ export default function PlaceForm() {
 
       <button
         type="submit"
-        disabled={isPending || geocodeStatus === 'loading'}
+        disabled={isPending || !placeFound}
         className="w-full bg-stone-900 text-white py-2.5 rounded-lg text-sm font-medium hover:bg-stone-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
       >
         {isPending ? 'Adding place…' : 'Add place'}

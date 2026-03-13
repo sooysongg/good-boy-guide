@@ -1,9 +1,16 @@
+import { redirect } from 'next/navigation'
+import { createClient } from '@/lib/supabase/server'
 import PlaceForm from '@/components/places/PlaceForm'
 import Link from 'next/link'
 
 export const metadata = { title: 'Add a place — Good Boy Guide' }
 
-export default function NewPlacePage() {
+export default async function NewPlacePage() {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+
+  if (!user) redirect('/auth/sign-in?next=/places/new')
+
   return (
     <div className="max-w-lg mx-auto">
       <div className="mb-6">

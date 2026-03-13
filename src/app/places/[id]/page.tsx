@@ -1,7 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
-import ReviewCard from '@/components/reviews/ReviewCard'
+import ReviewItem from '@/components/reviews/ReviewItem'
 import ReviewForm from '@/components/reviews/ReviewForm'
 import ReportButton from '@/components/places/ReportButton'
 import { NoiseLevel, PlaceCategory } from '@/lib/types'
@@ -115,8 +115,8 @@ export default async function PlaceDetailPage({ params }: Props) {
           <p className="text-stone-400 text-sm">No reviews yet — be the first!</p>
         ) : (
           <div className="space-y-3">
-            {reviews.map((review: Parameters<typeof ReviewCard>[0]['review']) => (
-              <ReviewCard key={review.id} review={review} />
+            {reviews.map((review: Parameters<typeof ReviewItem>[0]['review']) => (
+              <ReviewItem key={review.id} review={review} currentUserId={user?.id ?? null} />
             ))}
           </div>
         )}
