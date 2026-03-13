@@ -5,6 +5,7 @@ import ReviewItem from '@/components/reviews/ReviewItem'
 import ReviewForm from '@/components/reviews/ReviewForm'
 import ReportButton from '@/components/places/ReportButton'
 import AdminDeletePlaceButton from '@/components/places/AdminDeletePlaceButton'
+import AdminEditCategories from '@/components/places/AdminEditCategories'
 import { NoiseLevel, PlaceCategory } from '@/lib/types'
 import { ADMIN_USER_ID } from '@/lib/admin'
 
@@ -76,9 +77,21 @@ export default async function PlaceDetailPage({ params }: Props) {
               </a>
             </div>
           </div>
-          <span className="text-xs capitalize bg-stone-100 text-stone-500 px-2.5 py-1 rounded-full shrink-0">
-            {place.category}
-          </span>
+          <div className="flex flex-col items-end gap-1 shrink-0">
+            <div className="flex gap-1 flex-wrap justify-end">
+              {(place.categories?.length ? place.categories : [place.category]).map((cat: PlaceCategory) => (
+                <span key={cat} className="text-xs capitalize bg-stone-100 text-stone-500 px-2.5 py-1 rounded-full">
+                  {cat}
+                </span>
+              ))}
+            </div>
+            {isAdmin && (
+              <AdminEditCategories
+                placeId={place.id}
+                currentCategories={(place.categories?.length ? place.categories : [place.category]) as PlaceCategory[]}
+              />
+            )}
+          </div>
         </div>
       </div>
 

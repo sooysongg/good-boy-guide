@@ -57,6 +57,24 @@ export async function createPlace(formData: FormData) {
   redirect(`/places/${place.id}`)
 }
 
+export async function updatePlaceCategoriesAsAdmin(placeId: string, categories: PlaceCategory[]) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user || user.id !== ADMIN_USER_ID) return { error: 'Unauthorized.' }
+  if (categories.length === 0) return { error: 'Select at least one category.' }
+
+  const category = categories[0]
+  const { error } = await supabase
+    .from('places')
+    .update({ category, categories })
+    .eq('id', placeId)
+
+  if (error) return { error: error.message }
+  revalidatePath(`/places/${placeId}`)
+  revalidatePath('/places')
+  return { success: true }
+}
+
 export async function deletePlaceAsAdmin(placeId: string) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()

@@ -24,7 +24,7 @@ type SortOption = 'newest' | 'az' | 'rating' | 'popular'
 
 interface Props {
   searchParams: Promise<{
-    category?: string
+    category?: string | string[]
     view?: string
     search?: string
     page?: string
@@ -46,9 +46,16 @@ export default async function PlacesPage({ searchParams }: Props) {
     .from('places')
     .select('*, reviews(dog_rating)', { count: 'exact' })
 
-  // Category filter — use contains() so multi-category places show up
-  if (category && ['café', 'restaurant', 'bakery', 'bar'].includes(category)) {
-    query = query.contains('categories', [category])
+  // Normalise category param — Next can give string or string[]
+  const VALID_CATS = ['café', 'restaurant', 'bakery', 'bar']
+  const selectedCats = (Array.isArray(category) ? category : category ? [category] : [])
+    .filter(c => VALID_CATS.includes(c))
+
+  if (selectedCats.length === 1) {
+    query = query.contains('categories', [selectedCats[0]])
+  } else if (selectedCats.length > 1) {
+    // OR: places that contain ANY of the selected categories
+    query = query.or(selectedCats.map(c => `categories.cs.{${c}}`).join(','))
   }
 
   // Search filter
